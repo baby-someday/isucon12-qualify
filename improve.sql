@@ -1,0 +1,1 @@
+create index visit_history_tenant_id_competition_id_key on visit_history(tenant_id, competition_id);
