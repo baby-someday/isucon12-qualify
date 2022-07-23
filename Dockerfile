@@ -1,72 +1,23 @@
-FROM --platform=linux/amd64 ubuntu:20.04
+FROM golang:1.18.4-bullseye
 
-ENV TZ=Asia/Tokyo
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+WORKDIR /tmp
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+  apt-get -y upgrade && \
+  apt-get install -y wget gcc g++ make sqlite3 && \
+  wget -q https://dev.mysql.com/get/mysql-apt-config_0.8.22-1_all.deb && \
+  apt-get -y install ./mysql-apt-config_*_all.deb && \
+  apt-get -y update && \
+  apt-get -y install mysql-client
 
-RUN apt-get update && apt-get install -y \
-    software-properties-common \
-    && apt-get update \
-    && apt-get install -y \
-    git \
-    curl \
-    libreadline-dev \
-    pkg-config \
-    autoconf \
-    automake \
-    build-essential \
-    libmysqlclient-dev \
-    libssl-dev \
-    python3 \
-    python3-dev \
-    python3-venv \
-    openjdk-8-jdk-headless \
-    libxml2-dev \
-    libcurl4-openssl-dev \
-    libxslt1-dev \
-    re2c \
-    bison \
-    libbz2-dev \
-    libreadline-dev \
-    libssl-dev \
-    gettext \
-    libgettextpo-dev \
-    libicu-dev \
-    libmhash-dev \
-    libmcrypt-dev \
-    libgd-dev \
-    libtidy-dev \
-    nginx \
-    wget \
-    sudo \
-    graphviz \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+RUN useradd --uid=1001 --create-home isucon
+USER isucon
 
-RUN useradd -m ubuntu
+RUN mkdir -p /home/isucon/webapp/go
+WORKDIR /home/isucon/webapp/go
+COPY --chown=isucon:isucon ./ /home/isucon/webapp/go/
 
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+ENV GOPATH=/home/isucon/tmp/go
+ENV GOCACHE=/home/isucon/tmp/go/.cache
 
-RUN cd /home/ubuntu \
-    && git clone https://github.com/tagomoris/xbuild.git \
-    && mkdir local \
-    && xbuild/go-install -f 1.18.1 /home/ubuntu/local/go
-
-ENV PATH /home/ubuntu/local/go/bin:/home/ubuntu/go/bin:$PATH
-
-RUN cd /home/ubuntu \
-    && wget https://download.redis.io/releases/redis-6.2.7.tar.gz \
-    && tar xvzf redis-6.2.7.tar.gz \
-    && cd redis-6.2.7 \
-    && make \
-    && make install
-
-COPY docker/app/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-USER ubuntu
-
-RUN go install github.com/go-delve/delve/cmd/dlv@latest
-
-USER root
-
-WORKDIR /home/ubuntu/webapp
+CMD ["go", "run", "./cmd/isuports/main.go"]
